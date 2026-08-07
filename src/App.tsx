@@ -9,7 +9,7 @@ import { SumTenGame } from './components/SumTenGame/SumTenGame'
 type View = 'todo' | 'game'
 
 export default function App() {
-  const [view, setView] = useState<View>('todo')
+  const [view, setView] = useState<View>('game')
   const { todos, addTodo, deleteTodo, toggleTodo, reorderTodos, allCategories, allTags } = useTodos()
   const { filters, filtered, setStatus, setCategory, setPriority, setTag } = useFilters(todos)
 
