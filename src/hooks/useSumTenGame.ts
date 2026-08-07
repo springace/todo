@@ -14,8 +14,9 @@ const INITIAL_INTERVAL_MS = 800
 const MIN_INTERVAL_MS = 150
 const SPEEDUP_PER_POINTS = 50
 const SPEEDUP_STEP_MS = 30
-const FLASH_DURATION_MS = 280
-const COMBO_POPUP_DURATION_MS = 900
+const FLASH_DURATION_MS = 350
+const HOLD_DURATION_MS = 600
+const COMBO_POPUP_DURATION_MS = 850
 
 type Action =
   | { type: 'LEFT' }
@@ -69,7 +70,8 @@ export function useSumTenGame() {
 
   useEffect(() => {
     if (!state.resolve) return
-    const id = window.setTimeout(() => dispatch({ type: 'ADVANCE_RESOLVE' }), FLASH_DURATION_MS)
+    const delay = state.resolve.phase === 'flash' ? FLASH_DURATION_MS : HOLD_DURATION_MS
+    const id = window.setTimeout(() => dispatch({ type: 'ADVANCE_RESOLVE' }), delay)
     return () => window.clearTimeout(id)
   }, [state.resolve])
 

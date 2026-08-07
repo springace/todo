@@ -18,9 +18,12 @@ export interface ResolveStep {
   points: number
 }
 
+export type ResolvePhase = 'flash' | 'hold'
+
 export interface ResolveState {
   steps: ResolveStep[]
   stepIndex: number
+  phase: ResolvePhase
 }
 
 export interface ComboPopup {
@@ -66,30 +69,55 @@ function isFree(grid: Grid, row: number, col: number): boolean {
   return inBounds(row, col) && grid[row][col] === null
 }
 
+type LineCell = { pos: [number, number]; value: number }
+
+function collectLineMatches(line: LineCell[], matched: Set<string>) {
+  for (let start = 0; start < line.length; start++) {
+    let sum = 0
+    for (let end = start; end < line.length; end++) {
+      sum += line[end].value
+      if (sum === TARGET_SUM && end > start) {
+        for (let i = start; i <= end; i++) {
+          const [r, c] = line[i].pos
+          matched.add(`${r},${c}`)
+        }
+      }
+      if (sum >= TARGET_SUM) break
+    }
+  }
+}
+
+// Finds every contiguous run of 2+ blocks (no gaps) in a row or column whose
+// values sum to exactly 10 - not just adjacent pairs.
 function findMatches(grid: Grid): Set<string> {
   const matched = new Set<string>()
-  const neighbors = [
-    [-1, 0],
-    [1, 0],
-    [0, -1],
-    [0, 1],
-  ]
+
   for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      const v = grid[r][c]
-      if (v === null) continue
-      for (const [dr, dc] of neighbors) {
-        const nr = r + dr
-        const nc = c + dc
-        if (!inBounds(nr, nc)) continue
-        const nv = grid[nr][nc]
-        if (nv !== null && v + nv === TARGET_SUM) {
-          matched.add(`${r},${c}`)
-          matched.add(`${nr},${nc}`)
-        }
+    let segment: LineCell[] = []
+    for (let c = 0; c <= COLS; c++) {
+      const v = c < COLS ? grid[r][c] : null
+      if (v !== null) {
+        segment.push({ pos: [r, c], value: v })
+      } else {
+        if (segment.length >= 2) collectLineMatches(segment, matched)
+        segment = []
       }
     }
   }
+
+  for (let c = 0; c < COLS; c++) {
+    let segment: LineCell[] = []
+    for (let r = 0; r <= ROWS; r++) {
+      const v = r < ROWS ? grid[r][c] : null
+      if (v !== null) {
+        segment.push({ pos: [r, c], value: v })
+      } else {
+        if (segment.length >= 2) collectLineMatches(segment, matched)
+        segment = []
+      }
+    }
+  }
+
   return matched
 }
 
@@ -125,7 +153,7 @@ function resolveLock(grid: Grid, block: FallingBlock): ResolveStep[] {
       return [r, c]
     })
     for (const [r, c] of matchedPositions) working[r][c] = null
-    const points = (matchedPositions.length / 2) * 10 * comboIndex
+    const points = matchedPositions.length * 10 * comboIndex
     working = applyGravity(working)
     steps.push({ matched: matchedPositions, gridAfterClear: working, comboIndex, points })
   }
@@ -180,7 +208,7 @@ function lockCurrent(state: GameState): GameState {
     ...state,
     grid: lockedGrid,
     current: null,
-    resolve: { steps, stepIndex: 0 },
+    resolve: { steps, stepIndex: 0, phase: 'flash' },
   }
 }
 
@@ -201,29 +229,32 @@ export function hardDrop(state: GameState): GameState {
   return lockCurrent({ ...state, current: block })
 }
 
+// Each cascade pass is revealed in two beats: 'flash' highlights the
+// matched cells in place, then 'hold' applies the clear (grid update,
+// score, combo popup) and pauses before the next pass starts flashing.
 export function advanceResolve(state: GameState): GameState {
   if (!state.resolve) return state
-  const { steps, stepIndex } = state.resolve
-  const step = steps[stepIndex]
+  const { steps, stepIndex, phase } = state.resolve
 
-  const score = state.score + step.points
-  const best = Math.max(state.best, score)
-  const comboPopup: ComboPopup | null =
-    step.comboIndex >= 2 ? { combo: step.comboIndex, points: step.points, id: ++popupIdCounter } : state.comboPopup
-
-  const nextIndex = stepIndex + 1
-  if (nextIndex < steps.length) {
+  if (phase === 'flash') {
+    const step = steps[stepIndex]
+    const score = state.score + step.points
+    const best = Math.max(state.best, score)
     return {
       ...state,
       grid: step.gridAfterClear,
       score,
       best,
-      comboPopup,
-      resolve: { steps, stepIndex: nextIndex },
+      comboPopup: { combo: step.comboIndex, points: step.points, id: ++popupIdCounter },
+      resolve: { steps, stepIndex, phase: 'hold' },
     }
   }
 
-  return spawnAfterLock({ ...state, grid: step.gridAfterClear, score, best, comboPopup })
+  const nextIndex = stepIndex + 1
+  if (nextIndex < steps.length) {
+    return { ...state, resolve: { steps, stepIndex: nextIndex, phase: 'flash' } }
+  }
+  return spawnAfterLock({ ...state, resolve: null })
 }
 
 export function clearComboPopup(state: GameState): GameState {

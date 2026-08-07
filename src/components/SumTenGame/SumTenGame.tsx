@@ -32,9 +32,10 @@ export function SumTenGame() {
     displayGrid[state.current.row][state.current.col] = state.current.value
   }
 
-  const flashSet = state.resolve
-    ? new Set(state.resolve.steps[state.resolve.stepIndex].matched.map(([r, c]) => `${r},${c}`))
-    : null
+  const flashSet =
+    state.resolve && state.resolve.phase === 'flash'
+      ? new Set(state.resolve.steps[state.resolve.stepIndex].matched.map(([r, c]) => `${r},${c}`))
+      : null
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -86,17 +87,27 @@ export function SumTenGame() {
           })
         )}
 
-        {state.comboPopup && (
-          <div
-            key={state.comboPopup.id}
-            className="sumten-combo-popup pointer-events-none absolute left-1/2 top-1/2 z-20 whitespace-nowrap text-center"
-          >
-            <p className="text-2xl font-extrabold text-orange-500 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]">
-              COMBO ×{state.comboPopup.combo}
-            </p>
-            <p className="text-sm font-bold text-orange-400">+{state.comboPopup.points}</p>
-          </div>
-        )}
+        {state.comboPopup &&
+          (state.comboPopup.combo >= 2 ? (
+            <div
+              key={state.comboPopup.id}
+              className="sumten-combo-popup pointer-events-none absolute left-1/2 top-1/2 z-20 whitespace-nowrap text-center"
+            >
+              <p className="text-2xl font-extrabold text-orange-500 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]">
+                COMBO ×{state.comboPopup.combo}
+              </p>
+              <p className="text-sm font-bold text-orange-400">+{state.comboPopup.points}</p>
+            </div>
+          ) : (
+            <div
+              key={state.comboPopup.id}
+              className="sumten-combo-popup pointer-events-none absolute left-1/2 top-1/2 z-20 whitespace-nowrap text-center"
+            >
+              <p className="text-lg font-bold text-emerald-500 drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
+                +{state.comboPopup.points}
+              </p>
+            </div>
+          ))}
 
         {(paused || state.gameOver) && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/85 rounded-lg">
@@ -155,7 +166,7 @@ export function SumTenGame() {
       </div>
 
       <p className="text-xs text-gray-500 text-center leading-relaxed">
-        隣り合うブロックの数字の合計が10になると消えます。
+        縦・横に連続するブロックの合計が10になると、2個からでも3個以上でも消えます。
         <br />
         矢印キー / A・D・S・Wでも操作できます。
       </p>
