@@ -5,9 +5,8 @@ import { AddTodoForm } from './components/AddTodoForm'
 import { TodoList } from './components/TodoList'
 import { FilterBar } from './components/FilterBar'
 import { SentenceGame } from './components/SentenceGame'
-import { SumTenGame } from './components/SumTenGame/SumTenGame'
 
-type Tab = 'todo' | 'sentence' | 'sumten'
+type Tab = 'todo' | 'sentence'
 
 export default function App() {
   const { todos, addTodo, deleteTodo, toggleTodo, reorderTodos, allCategories, allTags } = useTodos()
@@ -45,14 +44,6 @@ export default function App() {
           >
             🎲 文章ゲーム
           </button>
-          <button
-            onClick={() => setTab('sumten')}
-            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              tab === 'sumten' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            足して10パズル
-          </button>
         </div>
 
         {tab === 'todo' && (
@@ -84,7 +75,12 @@ export default function App() {
         )}
 
         {tab === 'sentence' && <SentenceGame />}
-        {tab === 'sumten' && <SumTenGame />}
+
+        <p className="mt-8 text-center">
+          <a href="sumten/" className="text-xs text-gray-400 hover:text-gray-600 underline">
+            🎮 足して10パズルで遊ぶ
+          </a>
+        </p>
       </div>
     </div>
   )

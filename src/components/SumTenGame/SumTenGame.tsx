@@ -32,6 +32,10 @@ export function SumTenGame() {
     displayGrid[state.current.row][state.current.col] = state.current.value
   }
 
+  const flashSet = state.resolve
+    ? new Set(state.resolve.steps[state.resolve.stepIndex].matched.map(([r, c]) => `${r},${c}`))
+    : null
+
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="flex items-center justify-between w-full max-w-xs">
@@ -69,11 +73,29 @@ export function SumTenGame() {
         }}
       >
         {displayGrid.map((row, r) =>
-          row.map((value, c) => (
-            <div key={`${r}-${c}`} className="bg-gray-100 rounded-md">
-              {value !== null && <Block value={value} />}
-            </div>
-          ))
+          row.map((value, c) => {
+            const isFlashing = flashSet?.has(`${r},${c}`) ?? false
+            return (
+              <div
+                key={`${r}-${c}`}
+                className={`bg-gray-100 rounded-md ${isFlashing ? 'sumten-cell-clearing' : ''}`}
+              >
+                {value !== null && <Block value={value} />}
+              </div>
+            )
+          })
+        )}
+
+        {state.comboPopup && (
+          <div
+            key={state.comboPopup.id}
+            className="sumten-combo-popup pointer-events-none absolute left-1/2 top-1/2 z-20 whitespace-nowrap text-center"
+          >
+            <p className="text-2xl font-extrabold text-orange-500 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]">
+              COMBO ×{state.comboPopup.combo}
+            </p>
+            <p className="text-sm font-bold text-orange-400">+{state.comboPopup.points}</p>
+          </div>
         )}
 
         {(paused || state.gameOver) && (

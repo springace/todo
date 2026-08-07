@@ -11,6 +11,24 @@ export interface FallingBlock {
   value: number
 }
 
+export interface ResolveStep {
+  matched: [number, number][]
+  gridAfterClear: Grid
+  comboIndex: number
+  points: number
+}
+
+export interface ResolveState {
+  steps: ResolveStep[]
+  stepIndex: number
+}
+
+export interface ComboPopup {
+  combo: number
+  points: number
+  id: number
+}
+
 export interface GameState {
   grid: Grid
   current: FallingBlock | null
@@ -18,7 +36,11 @@ export interface GameState {
   score: number
   best: number
   gameOver: boolean
+  resolve: ResolveState | null
+  comboPopup: ComboPopup | null
 }
+
+let popupIdCounter = 0
 
 export function randomValue(): number {
   return 1 + Math.floor(Math.random() * 9)
@@ -87,32 +109,28 @@ function applyGravity(grid: Grid): Grid {
   return next
 }
 
-export interface ResolveResult {
-  grid: Grid
-  scoreGained: number
-  maxCombo: number
-}
-
-export function lockAndResolve(grid: Grid, block: FallingBlock): ResolveResult {
+function resolveLock(grid: Grid, block: FallingBlock): ResolveStep[] {
   let working = grid.map((row) => [...row])
   working[block.row][block.col] = block.value
 
-  let scoreGained = 0
-  let combo = 0
+  const steps: ResolveStep[] = []
+  let comboIndex = 0
 
   while (true) {
     const matched = findMatches(working)
     if (matched.size === 0) break
-    combo++
-    for (const key of matched) {
+    comboIndex++
+    const matchedPositions: [number, number][] = [...matched].map((key) => {
       const [r, c] = key.split(',').map(Number)
-      working[r][c] = null
-    }
-    scoreGained += (matched.size / 2) * 10 * combo
+      return [r, c]
+    })
+    for (const [r, c] of matchedPositions) working[r][c] = null
+    const points = (matchedPositions.length / 2) * 10 * comboIndex
     working = applyGravity(working)
+    steps.push({ matched: matchedPositions, gridAfterClear: working, comboIndex, points })
   }
 
-  return { grid: working, scoreGained, maxCombo: combo }
+  return steps
 }
 
 export function createInitialState(best = 0): GameState {
@@ -123,6 +141,8 @@ export function createInitialState(best = 0): GameState {
     score: 0,
     best,
     gameOver: false,
+    resolve: null,
+    comboPopup: null,
   }
 }
 
@@ -137,40 +157,76 @@ function canFall(grid: Grid, block: FallingBlock): boolean {
   return isFree(grid, block.row + 1, block.col)
 }
 
-function lockCurrentAndSpawn(state: GameState): GameState {
-  if (!state.current) return state
-  const { grid, scoreGained } = lockAndResolve(state.grid, state.current)
+function spawnAfterLock(state: GameState): GameState {
   const col = spawnCol()
-  const score = state.score + scoreGained
-  const best = Math.max(state.best, score)
+  if (state.grid[0][col] !== null) {
+    return { ...state, current: null, gameOver: true, resolve: null }
+  }
+  return { ...state, current: spawnBlock(state.next), next: randomValue(), resolve: null }
+}
 
-  if (grid[0][col] !== null) {
-    return { ...state, grid, score, best, current: null, gameOver: true }
+function lockCurrent(state: GameState): GameState {
+  if (!state.current) return state
+  const lockedGrid = state.grid.map((row) => [...row])
+  lockedGrid[state.current.row][state.current.col] = state.current.value
+
+  const steps = resolveLock(state.grid, state.current)
+
+  if (steps.length === 0) {
+    return spawnAfterLock({ ...state, grid: lockedGrid, current: null })
   }
 
   return {
     ...state,
-    grid,
-    score,
-    best,
-    current: spawnBlock(state.next),
-    next: randomValue(),
+    grid: lockedGrid,
+    current: null,
+    resolve: { steps, stepIndex: 0 },
   }
 }
 
 export function tick(state: GameState): GameState {
-  if (state.gameOver || !state.current) return state
+  if (state.gameOver || state.resolve || !state.current) return state
   if (canFall(state.grid, state.current)) {
     return { ...state, current: { ...state.current, row: state.current.row + 1 } }
   }
-  return lockCurrentAndSpawn(state)
+  return lockCurrent(state)
 }
 
 export function hardDrop(state: GameState): GameState {
-  if (state.gameOver || !state.current) return state
+  if (state.gameOver || state.resolve || !state.current) return state
   let block = state.current
   while (canFall(state.grid, block)) {
     block = { ...block, row: block.row + 1 }
   }
-  return lockCurrentAndSpawn({ ...state, current: block })
+  return lockCurrent({ ...state, current: block })
+}
+
+export function advanceResolve(state: GameState): GameState {
+  if (!state.resolve) return state
+  const { steps, stepIndex } = state.resolve
+  const step = steps[stepIndex]
+
+  const score = state.score + step.points
+  const best = Math.max(state.best, score)
+  const comboPopup: ComboPopup | null =
+    step.comboIndex >= 2 ? { combo: step.comboIndex, points: step.points, id: ++popupIdCounter } : state.comboPopup
+
+  const nextIndex = stepIndex + 1
+  if (nextIndex < steps.length) {
+    return {
+      ...state,
+      grid: step.gridAfterClear,
+      score,
+      best,
+      comboPopup,
+      resolve: { steps, stepIndex: nextIndex },
+    }
+  }
+
+  return spawnAfterLock({ ...state, grid: step.gridAfterClear, score, best, comboPopup })
+}
+
+export function clearComboPopup(state: GameState): GameState {
+  if (!state.comboPopup) return state
+  return { ...state, comboPopup: null }
 }

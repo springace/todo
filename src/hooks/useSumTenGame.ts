@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useReducer, useState } from 'react'
 import {
+  advanceResolve,
+  clearComboPopup,
   createInitialState,
   hardDrop,
   moveHorizontal,
@@ -12,6 +14,8 @@ const INITIAL_INTERVAL_MS = 800
 const MIN_INTERVAL_MS = 150
 const SPEEDUP_PER_POINTS = 50
 const SPEEDUP_STEP_MS = 30
+const FLASH_DURATION_MS = 280
+const COMBO_POPUP_DURATION_MS = 900
 
 type Action =
   | { type: 'LEFT' }
@@ -19,6 +23,8 @@ type Action =
   | { type: 'TICK' }
   | { type: 'DROP' }
   | { type: 'RESTART' }
+  | { type: 'ADVANCE_RESOLVE' }
+  | { type: 'CLEAR_COMBO_POPUP' }
 
 function reducer(state: GameState, action: Action): GameState {
   switch (action.type) {
@@ -32,6 +38,10 @@ function reducer(state: GameState, action: Action): GameState {
       return hardDrop(state)
     case 'RESTART':
       return createInitialState(state.best)
+    case 'ADVANCE_RESOLVE':
+      return advanceResolve(state)
+    case 'CLEAR_COMBO_POPUP':
+      return clearComboPopup(state)
   }
 }
 
@@ -50,12 +60,24 @@ export function useSumTenGame() {
   }, [state.best])
 
   useEffect(() => {
-    if (state.gameOver || paused) return
+    if (state.gameOver || paused || state.resolve) return
     const level = Math.floor(state.score / SPEEDUP_PER_POINTS)
     const interval = Math.max(MIN_INTERVAL_MS, INITIAL_INTERVAL_MS - level * SPEEDUP_STEP_MS)
     const id = window.setInterval(() => dispatch({ type: 'TICK' }), interval)
     return () => window.clearInterval(id)
-  }, [state.score, state.gameOver, paused])
+  }, [state.score, state.gameOver, paused, state.resolve])
+
+  useEffect(() => {
+    if (!state.resolve) return
+    const id = window.setTimeout(() => dispatch({ type: 'ADVANCE_RESOLVE' }), FLASH_DURATION_MS)
+    return () => window.clearTimeout(id)
+  }, [state.resolve])
+
+  useEffect(() => {
+    if (!state.comboPopup) return
+    const id = window.setTimeout(() => dispatch({ type: 'CLEAR_COMBO_POPUP' }), COMBO_POPUP_DURATION_MS)
+    return () => window.clearTimeout(id)
+  }, [state.comboPopup])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
