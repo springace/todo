@@ -23,6 +23,12 @@ function Block({ value }: { value: number }) {
   )
 }
 
+function stageColor(combo: number): string {
+  if (combo <= 1) return 'text-emerald-500'
+  if (combo === 2) return 'text-orange-500'
+  return 'text-pink-600'
+}
+
 export function SumTenGame() {
   const { state, paused, moveLeft, moveRight, softDrop, drop, restart, togglePause } =
     useSumTenGame()
@@ -55,6 +61,11 @@ export function SumTenGame() {
         <div className="w-8 h-8">
           <Block value={state.next} />
         </div>
+        {state.resolve && (
+          <span className="text-xs font-bold text-orange-500 animate-pulse">
+            連鎖中 {state.resolve.stepIndex + 1}/{state.resolve.steps.length}
+          </span>
+        )}
         <button
           type="button"
           onClick={togglePause}
@@ -87,27 +98,23 @@ export function SumTenGame() {
           })
         )}
 
-        {state.comboPopup &&
-          (state.comboPopup.combo >= 2 ? (
-            <div
-              key={state.comboPopup.id}
-              className="sumten-combo-popup pointer-events-none absolute left-1/2 top-1/2 z-20 whitespace-nowrap text-center"
+        {state.comboPopup && (
+          <div
+            key={state.comboPopup.id}
+            className="sumten-combo-popup pointer-events-none absolute left-1/2 top-1/2 z-20 whitespace-nowrap text-center"
+          >
+            <p
+              className={`font-extrabold drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)] ${stageColor(state.comboPopup.combo)} ${
+                state.comboPopup.combo >= 2 ? 'text-3xl' : 'text-lg'
+              }`}
             >
-              <p className="text-2xl font-extrabold text-orange-500 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]">
-                COMBO ×{state.comboPopup.combo}
-              </p>
-              <p className="text-sm font-bold text-orange-400">+{state.comboPopup.points}</p>
-            </div>
-          ) : (
-            <div
-              key={state.comboPopup.id}
-              className="sumten-combo-popup pointer-events-none absolute left-1/2 top-1/2 z-20 whitespace-nowrap text-center"
-            >
-              <p className="text-lg font-bold text-emerald-500 drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
-                +{state.comboPopup.points}
-              </p>
-            </div>
-          ))}
+              {state.comboPopup.combo >= 2 ? `COMBO ×${state.comboPopup.combo}!` : `${state.comboPopup.combo}連鎖目`}
+            </p>
+            <p className={`text-sm font-bold ${stageColor(state.comboPopup.combo)}`}>
+              +{state.comboPopup.points}
+            </p>
+          </div>
+        )}
 
         {(paused || state.gameOver) && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/85 rounded-lg">
