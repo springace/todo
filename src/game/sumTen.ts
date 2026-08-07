@@ -76,19 +76,18 @@ function collectLineMatches(line: LineCell[], matched: Set<string>) {
     let sum = 0
     for (let end = start; end < line.length; end++) {
       sum += line[end].value
-      if (sum === TARGET_SUM && end > start) {
+      if (sum % TARGET_SUM === 0 && end > start) {
         for (let i = start; i <= end; i++) {
           const [r, c] = line[i].pos
           matched.add(`${r},${c}`)
         }
       }
-      if (sum >= TARGET_SUM) break
     }
   }
 }
 
 // Finds every contiguous run of 2+ blocks (no gaps) in a row or column whose
-// values sum to exactly 10 - not just adjacent pairs.
+// values sum to a multiple of 10 - not just adjacent pairs summing to exactly 10.
 function findMatches(grid: Grid): Set<string> {
   const matched = new Set<string>()
 

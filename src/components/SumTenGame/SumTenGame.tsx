@@ -173,7 +173,7 @@ export function SumTenGame() {
       </div>
 
       <p className="text-xs text-gray-500 text-center leading-relaxed">
-        縦・横に連続するブロックの合計が10になると、2個からでも3個以上でも消えます。
+        縦・横に連続するブロックの合計が10の倍数になると、2個からでも3個以上でも消えます。
         <br />
         矢印キー / A・D・S・Wでも操作できます。
       </p>

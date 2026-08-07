@@ -6,7 +6,7 @@ export default function SumTenApp() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         <header className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">足して10パズル</h1>
-          <p className="text-sm text-gray-500 mt-1">縦・横に連続するブロックの合計が10になると消えるパズルゲーム</p>
+          <p className="text-sm text-gray-500 mt-1">縦・横に連続するブロックの合計が10の倍数になると消えるパズルゲーム</p>
         </header>
 
         <SumTenGame />
