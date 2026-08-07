@@ -4,14 +4,15 @@ import { useFilters } from './hooks/useFilters'
 import { AddTodoForm } from './components/AddTodoForm'
 import { TodoList } from './components/TodoList'
 import { FilterBar } from './components/FilterBar'
+import { SentenceGame } from './components/SentenceGame'
 import { SumTenGame } from './components/SumTenGame/SumTenGame'
 
-type View = 'todo' | 'game'
+type Tab = 'todo' | 'sentence' | 'sumten'
 
 export default function App() {
-  const [view, setView] = useState<View>('game')
   const { todos, addTodo, deleteTodo, toggleTodo, reorderTodos, allCategories, allTags } = useTodos()
   const { filters, filtered, setStatus, setCategory, setPriority, setTag } = useFilters(todos)
+  const [tab, setTab] = useState<Tab>('todo')
 
   const activeCount = todos.filter((t) => !t.completed).length
 
@@ -24,30 +25,37 @@ export default function App() {
           <p className="text-sm text-gray-500 mt-1">
             {activeCount} 件の未完了タスク
           </p>
-
-          <nav className="mt-4 inline-flex rounded-lg bg-gray-200 p-1">
-            <button
-              type="button"
-              onClick={() => setView('todo')}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                view === 'todo' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'
-              }`}
-            >
-              Todo
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('game')}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                view === 'game' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'
-              }`}
-            >
-              足して10パズル
-            </button>
-          </nav>
         </header>
 
-        {view === 'todo' ? (
+        {/* Tabs */}
+        <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setTab('todo')}
+            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              tab === 'todo' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            タスク
+          </button>
+          <button
+            onClick={() => setTab('sentence')}
+            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              tab === 'sentence' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            🎲 文章ゲーム
+          </button>
+          <button
+            onClick={() => setTab('sumten')}
+            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              tab === 'sumten' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            足して10パズル
+          </button>
+        </div>
+
+        {tab === 'todo' && (
           <>
             {/* Add form */}
             <AddTodoForm allCategories={allCategories} onAdd={addTodo} />
@@ -73,9 +81,10 @@ export default function App() {
               activeTag={filters.tag}
             />
           </>
-        ) : (
-          <SumTenGame />
         )}
+
+        {tab === 'sentence' && <SentenceGame />}
+        {tab === 'sumten' && <SumTenGame />}
       </div>
     </div>
   )
