@@ -7,12 +7,12 @@ import {
   moveHorizontal,
   tick,
   type GameState,
-} from '../game/sumTen'
+} from '../game/fromSeven'
 
-const BEST_SCORE_KEY = 'sumten-best-score'
+const BEST_SCORE_KEY = 'from-seven-best-score'
 const INITIAL_INTERVAL_MS = 800
 const MIN_INTERVAL_MS = 150
-const SPEEDUP_PER_POINTS = 50
+const SPEEDUP_PER_BLOCKS = 10
 const SPEEDUP_STEP_MS = 30
 const FLASH_DURATION_MS = 450
 const HOLD_DURATION_MS = 800
@@ -52,7 +52,7 @@ function loadBest(): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-export function useSumTenGame() {
+export function useFromSevenGame() {
   const [state, dispatch] = useReducer(reducer, undefined, () => createInitialState(loadBest()))
   const [paused, setPaused] = useState(false)
 
@@ -62,11 +62,11 @@ export function useSumTenGame() {
 
   useEffect(() => {
     if (state.gameOver || paused || state.resolve) return
-    const level = Math.floor(state.score / SPEEDUP_PER_POINTS)
+    const level = Math.floor(state.blocksCleared / SPEEDUP_PER_BLOCKS)
     const interval = Math.max(MIN_INTERVAL_MS, INITIAL_INTERVAL_MS - level * SPEEDUP_STEP_MS)
     const id = window.setInterval(() => dispatch({ type: 'TICK' }), interval)
     return () => window.clearInterval(id)
-  }, [state.score, state.gameOver, paused, state.resolve])
+  }, [state.blocksCleared, state.gameOver, paused, state.resolve])
 
   useEffect(() => {
     if (!state.resolve) return

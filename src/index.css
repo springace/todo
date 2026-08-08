@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@keyframes sumten-cell-clear {
+@keyframes fromseven-cell-clear {
   0% {
     transform: scale(1);
     filter: brightness(1) saturate(1);
@@ -21,13 +21,13 @@
   }
 }
 
-.sumten-cell-clearing {
+.fromseven-cell-clearing {
   position: relative;
   z-index: 10;
-  animation: sumten-cell-clear 280ms ease-out forwards;
+  animation: fromseven-cell-clear 280ms ease-out forwards;
 }
 
-@keyframes sumten-combo-pop {
+@keyframes fromseven-combo-pop {
   0% {
     transform: translate(-50%, -35%) scale(0.5);
     opacity: 0;
@@ -46,6 +46,6 @@
   }
 }
 
-.sumten-combo-popup {
-  animation: sumten-combo-pop 900ms ease-out forwards;
+.fromseven-combo-popup {
+  animation: fromseven-combo-pop 900ms ease-out forwards;
 }

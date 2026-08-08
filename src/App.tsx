@@ -77,8 +77,8 @@ export default function App() {
         {tab === 'sentence' && <SentenceGame />}
 
         <p className="mt-8 text-center">
-          <a href="sumten/" className="text-xs text-gray-400 hover:text-gray-600 underline">
-            🎮 足して10パズルで遊ぶ
+          <a href="from-seven/" className="text-xs text-gray-400 hover:text-gray-600 underline">
+            🎮 From Seven で遊ぶ
           </a>
         </p>
       </div>

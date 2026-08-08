@@ -1,6 +1,7 @@
 export const COLS = 6
 export const ROWS = 12
-export const TARGET_SUM = 10
+export const FIRST_TARGET = 7
+export const BLOCKS_PER_LEVEL = 20
 
 export type Cell = number | null
 export type Grid = Cell[][]
@@ -16,6 +17,9 @@ export interface ResolveStep {
   gridAfterClear: Grid
   comboIndex: number
   points: number
+  target: number
+  isLevelUp: boolean
+  blocksClearedAfter: number
 }
 
 export type ResolvePhase = 'flash' | 'hold'
@@ -29,6 +33,8 @@ export interface ResolveState {
 export interface ComboPopup {
   combo: number
   points: number
+  target: number
+  isLevelUp: boolean
   id: number
 }
 
@@ -41,6 +47,7 @@ export interface GameState {
   gameOver: boolean
   resolve: ResolveState | null
   comboPopup: ComboPopup | null
+  blocksCleared: number
 }
 
 let popupIdCounter = 0
@@ -69,14 +76,43 @@ function isFree(grid: Grid, row: number, col: number): boolean {
   return inBounds(row, col) && grid[row][col] === null
 }
 
+function isPrime(n: number): boolean {
+  if (n < 2) return false
+  for (let i = 2; i * i <= n; i++) {
+    if (n % i === 0) return false
+  }
+  return true
+}
+
+const primeCache: number[] = []
+
+// The Nth prime at or after FIRST_TARGET: level 0 -> 7, 1 -> 11, 2 -> 13, 3 -> 17, ...
+function primeAtLevel(level: number): number {
+  while (primeCache.length <= level) {
+    const n = primeCache.length === 0 ? FIRST_TARGET : primeCache[primeCache.length - 1] + 1
+    let candidate = n
+    while (!isPrime(candidate)) candidate++
+    primeCache.push(candidate)
+  }
+  return primeCache[level]
+}
+
+export function levelForBlocksCleared(blocksCleared: number): number {
+  return Math.floor(blocksCleared / BLOCKS_PER_LEVEL)
+}
+
+export function currentTarget(state: GameState): number {
+  return primeAtLevel(levelForBlocksCleared(state.blocksCleared))
+}
+
 type LineCell = { pos: [number, number]; value: number }
 
-function collectLineMatches(line: LineCell[], matched: Set<string>) {
+function collectLineMatches(line: LineCell[], matched: Set<string>, target: number) {
   for (let start = 0; start < line.length; start++) {
     let sum = 0
     for (let end = start; end < line.length; end++) {
       sum += line[end].value
-      if (sum % TARGET_SUM === 0 && end > start) {
+      if (sum % target === 0 && end > start) {
         for (let i = start; i <= end; i++) {
           const [r, c] = line[i].pos
           matched.add(`${r},${c}`)
@@ -87,8 +123,8 @@ function collectLineMatches(line: LineCell[], matched: Set<string>) {
 }
 
 // Finds every contiguous run of 2+ blocks (no gaps) in a row or column whose
-// values sum to a multiple of 10 - not just adjacent pairs summing to exactly 10.
-function findMatches(grid: Grid): Set<string> {
+// values sum to a multiple of the current target prime.
+function findMatches(grid: Grid, target: number): Set<string> {
   const matched = new Set<string>()
 
   for (let r = 0; r < ROWS; r++) {
@@ -98,7 +134,7 @@ function findMatches(grid: Grid): Set<string> {
       if (v !== null) {
         segment.push({ pos: [r, c], value: v })
       } else {
-        if (segment.length >= 2) collectLineMatches(segment, matched)
+        if (segment.length >= 2) collectLineMatches(segment, matched, target)
         segment = []
       }
     }
@@ -111,7 +147,7 @@ function findMatches(grid: Grid): Set<string> {
       if (v !== null) {
         segment.push({ pos: [r, c], value: v })
       } else {
-        if (segment.length >= 2) collectLineMatches(segment, matched)
+        if (segment.length >= 2) collectLineMatches(segment, matched, target)
         segment = []
       }
     }
@@ -136,25 +172,45 @@ function applyGravity(grid: Grid): Grid {
   return next
 }
 
-function resolveLock(grid: Grid, block: FallingBlock): ResolveStep[] {
+// Each pass re-derives the target prime from the running cleared-block count,
+// so the moment enough blocks have been cleared to level up, the very next
+// pass re-scans the whole board under the new target and clears anything
+// that now matches - even mid-cascade, before the piece has finished settling.
+function resolveLock(grid: Grid, block: FallingBlock, startingBlocksCleared: number): ResolveStep[] {
   let working = grid.map((row) => [...row])
   working[block.row][block.col] = block.value
 
   const steps: ResolveStep[] = []
   let comboIndex = 0
+  let blocksCleared = startingBlocksCleared
+  let activeTarget = primeAtLevel(levelForBlocksCleared(blocksCleared))
 
   while (true) {
-    const matched = findMatches(working)
+    const target = primeAtLevel(levelForBlocksCleared(blocksCleared))
+    const isLevelUp = target !== activeTarget
+    activeTarget = target
+
+    const matched = findMatches(working, target)
     if (matched.size === 0) break
+
     comboIndex++
     const matchedPositions: [number, number][] = [...matched].map((key) => {
       const [r, c] = key.split(',').map(Number)
       return [r, c]
     })
     for (const [r, c] of matchedPositions) working[r][c] = null
-    const points = matchedPositions.length * 10 * comboIndex
+    blocksCleared += matchedPositions.length
+    const points = matchedPositions.length * target * comboIndex
     working = applyGravity(working)
-    steps.push({ matched: matchedPositions, gridAfterClear: working, comboIndex, points })
+    steps.push({
+      matched: matchedPositions,
+      gridAfterClear: working,
+      comboIndex,
+      points,
+      target,
+      isLevelUp,
+      blocksClearedAfter: blocksCleared,
+    })
   }
 
   return steps
@@ -170,6 +226,7 @@ export function createInitialState(best = 0): GameState {
     gameOver: false,
     resolve: null,
     comboPopup: null,
+    blocksCleared: 0,
   }
 }
 
@@ -197,7 +254,7 @@ function lockCurrent(state: GameState): GameState {
   const lockedGrid = state.grid.map((row) => [...row])
   lockedGrid[state.current.row][state.current.col] = state.current.value
 
-  const steps = resolveLock(state.grid, state.current)
+  const steps = resolveLock(state.grid, state.current, state.blocksCleared)
 
   if (steps.length === 0) {
     return spawnAfterLock({ ...state, grid: lockedGrid, current: null })
@@ -244,7 +301,14 @@ export function advanceResolve(state: GameState): GameState {
       grid: step.gridAfterClear,
       score,
       best,
-      comboPopup: { combo: step.comboIndex, points: step.points, id: ++popupIdCounter },
+      blocksCleared: step.blocksClearedAfter,
+      comboPopup: {
+        combo: step.comboIndex,
+        points: step.points,
+        target: step.target,
+        isLevelUp: step.isLevelUp,
+        id: ++popupIdCounter,
+      },
       resolve: { steps, stepIndex, phase: 'hold' },
     }
   }

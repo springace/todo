@@ -1,5 +1,5 @@
-import { useSumTenGame } from '../../hooks/useSumTenGame'
-import { COLS, ROWS, type Cell } from '../../game/sumTen'
+import { useFromSevenGame } from '../../hooks/useFromSevenGame'
+import { COLS, ROWS, currentTarget, type Cell } from '../../game/fromSeven'
 
 const VALUE_STYLES: Record<number, string> = {
   1: 'bg-red-400',
@@ -29,9 +29,9 @@ function stageColor(combo: number): string {
   return 'text-pink-600'
 }
 
-export function SumTenGame() {
+export function FromSevenGame() {
   const { state, paused, moveLeft, moveRight, softDrop, drop, restart, togglePause } =
-    useSumTenGame()
+    useFromSevenGame()
 
   const displayGrid: Cell[][] = state.grid.map((row) => [...row])
   if (state.current) {
@@ -49,6 +49,10 @@ export function SumTenGame() {
         <div>
           <p className="text-xs text-gray-500">スコア</p>
           <p className="text-xl font-bold text-gray-900">{state.score}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-gray-500">目標</p>
+          <p className="text-xl font-bold text-purple-600">×{currentTarget(state)}</p>
         </div>
         <div className="text-right">
           <p className="text-xs text-gray-500">ベスト</p>
@@ -90,7 +94,7 @@ export function SumTenGame() {
             return (
               <div
                 key={`${r}-${c}`}
-                className={`bg-gray-100 rounded-md ${isFlashing ? 'sumten-cell-clearing' : ''}`}
+                className={`bg-gray-100 rounded-md ${isFlashing ? 'fromseven-cell-clearing' : ''}`}
               >
                 {value !== null && <Block value={value} />}
               </div>
@@ -101,18 +105,34 @@ export function SumTenGame() {
         {state.comboPopup && (
           <div
             key={state.comboPopup.id}
-            className="sumten-combo-popup pointer-events-none absolute left-1/2 top-1/2 z-20 whitespace-nowrap text-center"
+            className="fromseven-combo-popup pointer-events-none absolute left-1/2 top-1/2 z-20 whitespace-nowrap text-center"
           >
-            <p
-              className={`font-extrabold drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)] ${stageColor(state.comboPopup.combo)} ${
-                state.comboPopup.combo >= 2 ? 'text-3xl' : 'text-lg'
-              }`}
-            >
-              {state.comboPopup.combo >= 2 ? `COMBO ×${state.comboPopup.combo}!` : `${state.comboPopup.combo}連鎖目`}
-            </p>
-            <p className={`text-sm font-bold ${stageColor(state.comboPopup.combo)}`}>
-              +{state.comboPopup.points}
-            </p>
+            {state.comboPopup.isLevelUp ? (
+              <>
+                <p className="text-3xl font-extrabold text-purple-600 drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
+                  LEVEL UP!
+                </p>
+                <p className="text-lg font-extrabold text-purple-500">
+                  目標 ×{state.comboPopup.target}へ
+                </p>
+                <p className="text-sm font-bold text-purple-400">+{state.comboPopup.points}</p>
+              </>
+            ) : (
+              <>
+                <p
+                  className={`font-extrabold drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)] ${stageColor(state.comboPopup.combo)} ${
+                    state.comboPopup.combo >= 2 ? 'text-3xl' : 'text-lg'
+                  }`}
+                >
+                  {state.comboPopup.combo >= 2
+                    ? `COMBO ×${state.comboPopup.combo}!`
+                    : `${state.comboPopup.combo}連鎖目`}
+                </p>
+                <p className={`text-sm font-bold ${stageColor(state.comboPopup.combo)}`}>
+                  +{state.comboPopup.points}
+                </p>
+              </>
+            )}
           </div>
         )}
 
@@ -173,7 +193,9 @@ export function SumTenGame() {
       </div>
 
       <p className="text-xs text-gray-500 text-center leading-relaxed">
-        縦・横に連続するブロックの合計が10の倍数になると、2個からでも3個以上でも消えます。
+        縦・横に連続するブロックの合計が目標の倍数になると、2個からでも3個以上でも消えます。
+        <br />
+        ブロックを消すごとに目標は7→11→13→17…と素数の順に難しくなっていきます。
         <br />
         矢印キー / A・D・S・Wでも操作できます。
       </p>
